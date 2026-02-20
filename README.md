@@ -266,7 +266,9 @@ DeepSeek-R1 的推理模型默认会输出思维链（`<think>...</think>`）。
 *DeepSeek-R1 defaults to outputting a chain-of-thought. Pre-filling with `<｜Assistant｜>` forces the model to skip the thinking phase and output JSON directly, achieving 100% format compliance.*
 
 **Whisper 反幻觉**
-三道防线：① 音频首尾静音裁剪；② `condition_on_previous_text=False`；③ 重复模式正则检测（去除"向右向右向右..."类幻觉）。
+三道防线，全部封装在 `RobotEar.get_text()` 内：① 音频首尾静音裁剪 + 时长上下限过滤；② `condition_on_previous_text=False`；③ 重复模式正则检测（去除"向右向右向右..."类幻觉）。音频相关阈值（静音灵敏度、最短/最长时长）均在 `config.py` 中统一配置。
+
+*Three defences, all encapsulated in `RobotEar.get_text()`: silence trimming + duration guards; `condition_on_previous_text=False`; repeated-phrase regex dedup. All thresholds are tunable via `config.py`.*
 
 **工程坑：System Prompt 对齐**
 训练与推理的 System Prompt 必须完全一致，否则模型输出偏移（如输出 500mm 而非 50mm）。已在代码注释中标注警告。
@@ -288,11 +290,12 @@ robot_arm/
 ├── README.md          本文档 / This file
 ├── TRAINING.md        大模型 LoRA 微调研究笔记 / LLM fine-tuning notes
 ├── requirements.txt   Python 依赖 / Dependencies
-├── config.py          硬件与运动参数（支持环境变量覆盖）/ Hardware & motion constants
+├── config.py          全局常量：硬件、运动、音频、手势（支持环境变量覆盖）
+│                      / All tunables: hardware, motion, audio & gesture constants
 │
 ├── main.ino           ESP32 固件，LEDC PWM 舵机控制 / ESP32 firmware
 ├── arm_main.py        机械臂运动学核心：D-H IK + S-Curve / Kinematics & control
-├── whisper_main.py    语音识别封装 / ASR wrapper
+├── whisper_main.py    语音识别全链路：静音裁剪→转录→纠错 / Full ASR pipeline (RobotEar)
 └── voice_main.py      主程序：语音→LLM→视觉→控制 / Main app orchestrator
 ```
 
