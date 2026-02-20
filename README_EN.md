@@ -21,38 +21,16 @@ Total hardware cost **¥317 (~$45 USD)**. Requires an NVIDIA GPU for LLM inferen
 
 ## Architecture
 
-```
-Microphone
-    │
-    ▼
-┌──────────────────┐
-│  Faster-Whisper  │  Chinese speech → text
-└────────┬─────────┘
-         │  "lift the pencil sharpener 5cm"
-         ▼
-┌──────────────────┐
-│  Regex engine    │  Simple commands matched directly
-│                  │  (release / reset / directional moves)
-│                  │  Hit → emit JSON, skip LLM
-└────────┬─────────┘
-         │  Miss (complex commands with object names)
-         ▼
-┌──────────────────┐
-│ DeepSeek-R1-1.5B │  QLoRA fine-tuned inference
-│  (QLoRA, FP16)   │  Natural language → structured JSON
-└────────┬─────────┘
-         │  [{"action": "lift", "target": "part", "height": 50}]
-         ▼
-┌──────────────────┐
-│  YOLOv8s         │  Real-time object detection
-│  + Homography    │  Pixel coords → robot workspace coords (mm)
-└────────┬─────────┘
-         │  (rx=170, ry=3)
-         ▼
-┌──────────────────┐
-│  Motion engine   │  D-H IK + S-Curve interpolation
-│  arm_main.py     │  Smooth trajectory → serial → ESP32 → servos
-└──────────────────┘
+```mermaid
+flowchart TD
+    MIC["🎤 Microphone"] --> STT["Faster-Whisper\nChinese speech recognition"]
+    STT --> RULE{"Regex engine\nSimple command match"}
+    RULE -- "Hit\nrelease / reset / directional" --> ACT["JSON action"]
+    RULE -- "Miss\ncomplex command with object name" --> LLM["DeepSeek-R1-1.5B\nQLoRA FP16\nNatural language → JSON"]
+    LLM --> ACT
+    ACT --> VIS["YOLOv8s + Homography\nObject detection · hand-eye calibration\nPixel coords → robot coords mm"]
+    VIS --> MOT["arm_main.py\nD-H IK + S-Curve trajectory"]
+    MOT --> ESP["ESP32 PWM → Servos"]
 ```
 
 ---
